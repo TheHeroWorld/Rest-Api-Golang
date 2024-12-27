@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
+
 	_ "github.com/lib/pq"
 )
 
@@ -25,11 +27,13 @@ type data_task struct {
 
 func Registration(email *string, name *string, password *string) error {
 	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
+	test := []byte(*password)
+	hesh, _ := bcrypt.GenerateFromPassword(test, bcrypt.DefaultCost) // Создаем хэш
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
-	_, err = db.Exec("INSERT INTO users(email, password, name) values($1, $2, $3)", email, password, name)
+	_, err = db.Exec("INSERT INTO users(email, password, name) values($1, $2, $3)", email, hesh, name)
 	if err != nil {
 		return err
 	}
@@ -49,10 +53,13 @@ func FindUser(email string, pass string) (int, error) {
 	if err != nil {
 		return 0, ErrUserNotFound
 	}
-	if string(pass) == string(storedpassword) {
-		return id, nil
+
+	err = bcrypt.CompareHashAndPassword([]byte(storedpassword), []byte(pass)) // Сравниваем
+	if err != nil {
+		return 0, ErrInvalidPassword
 	}
-	return 0, ErrInvalidPassword
+	return id, nil
+
 }
 
 func NewTask(id any, name string, Description string) (string, error) {
@@ -63,7 +70,6 @@ func NewTask(id any, name string, Description string) (string, error) {
 		panic(err)
 	}
 	defer db.Close()
-	fmt.Println(Description)
 	_, err = db.Exec("INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at, deadline)
 	if err != nil {
 		return "", err

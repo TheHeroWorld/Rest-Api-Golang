@@ -39,7 +39,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 
 		} else {
-			fmt.Println(err)
+			http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
 		}
 	})
 }

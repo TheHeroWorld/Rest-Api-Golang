@@ -85,7 +85,6 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		data := &task{}
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
-		fmt.Println(data)
 		_, err := db.ChangeTusk(vars["id"], data.Status)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -114,10 +113,10 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/register", registerHandler).Methods("POST")
 	router.HandleFunc("/login", LoginHandler).Methods("POST")
-	protectedRoutes := router.PathPrefix("/tasks").Subrouter()
+	protectedRoutes := router.PathPrefix("/tasks").Subrouter() // создаем саб роутер для авторизации
 	protectedRoutes.HandleFunc("", TaskHandler).Methods("POST", "GET")
 	protectedRoutes.HandleFunc("/{id:[0-9]+}", ChangeTaskHandler).Methods("PUT", "DELETE", "GET")
-	protectedRoutes.Use(middleware.AuthMiddleware)
+	protectedRoutes.Use(middleware.AuthMiddleware) // под саб роутер подвязываем мидлвейр авторизации
 	http.Handle("/", router)
 	fmt.Println("Server is listening...")
 	http.ListenAndServe(":8181", nil)
