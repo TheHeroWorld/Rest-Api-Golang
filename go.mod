@@ -1,4 +1,4 @@
-module myproject
+module My_Frist_Golang
 
 go 1.23.3
 

@@ -1,4 +1,4 @@
-package main
+package db
 
 import (
 	"database/sql"
@@ -8,6 +8,8 @@ import (
 
 	_ "github.com/lib/pq"
 )
+
+const connStr = "user=postgres password=7458 dbname=test_db sslmode=disable"
 
 var ErrInvalidPassword = errors.New("invalid password")
 var ErrUserNotFound = errors.New("user not found")
@@ -21,7 +23,7 @@ type data_task struct {
 	Deadline_at string `json:"deadline_at"`
 }
 
-func registration(email *string, name *string, password *string) error {
+func Registration(email *string, name *string, password *string) error {
 	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
 	if err != nil {
 		panic(err)

@@ -1,6 +1,7 @@
-package main
+package auth
 
 import (
+	"My_Frist_Golang/db"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,8 +13,8 @@ var (
 	s   string
 )
 
-func auth(email string, password string) (string, error) {
-	id, err := FindUser(email, password)
+func Auth(email string, password string) (string, error) {
+	id, err := db.FindUser(email, password)
 
 	if err != nil || id == 0 {
 		return "", fmt.Errorf("invalid login or password")

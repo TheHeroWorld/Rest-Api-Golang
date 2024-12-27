@@ -1,4 +1,4 @@
-package main
+package middleware
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func authMiddleware(next http.Handler) http.Handler {
+func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := []byte(`K0IxiQZOBwHGejUGCTwEz7J9EKi6l1evwEdET/Zy6mg=`)
 		tokenHeader := r.Header["Authorization"]

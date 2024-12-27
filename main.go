@@ -1,6 +1,9 @@
 package main
 
 import (
+	"My_Frist_Golang/auth"
+	"My_Frist_Golang/db"
+	"My_Frist_Golang/middleware"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -31,7 +34,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if data.Email == "" || data.Name == "" || data.Password == "" {
 		http.Error(w, "Missing fields: email, name or password", http.StatusBadRequest)
 	} else {
-		err := registration(&data.Email, &data.Name, &data.Password)
+		err := db.Registration(&data.Email, &data.Name, &data.Password)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
 		}
@@ -43,7 +46,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	data := &User{}
 	decoder := json.NewDecoder(r.Body)
 	decoder.Decode(data)
-	token, err := auth(data.Email, data.Password)
+	token, err := auth.Auth(data.Email, data.Password)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusUnauthorized)
 	}
@@ -61,14 +64,14 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 		if data.Name == "" || data.Description == "" {
 			http.Error(w, "Missing fields: email, name or password", http.StatusBadRequest)
 		}
-		result, err := NewTask(id, data.Name, data.Description)
+		result, err := db.NewTask(id, data.Name, data.Description)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 		fmt.Println(result) // НАдо понять как возвращать Idсозданной заявки
 
 	} else {
-		data, _ := GetAllTasks(id)
+		data, _ := db.GetAllTasks(id)
 		w.Header().Set("Content-Type", "application/json")
 		json_data, _ := json.Marshal(data)
 		w.Write(json_data)
@@ -83,17 +86,17 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
 		fmt.Println(data)
-		_, err := ChangeTusk(vars["id"], data.Status)
+		_, err := db.ChangeTusk(vars["id"], data.Status)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	} else if r.Method == "DELETE" {
-		_, err := DeleteTask(vars["id"])
+		_, err := db.DeleteTask(vars["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	} else {
-		data, err := GetTask(vars["id"])
+		data, err := db.GetTask(vars["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -114,7 +117,7 @@ func main() {
 	protectedRoutes := router.PathPrefix("/tasks").Subrouter()
 	protectedRoutes.HandleFunc("", TaskHandler).Methods("POST", "GET")
 	protectedRoutes.HandleFunc("/{id:[0-9]+}", ChangeTaskHandler).Methods("PUT", "DELETE", "GET")
-	protectedRoutes.Use(authMiddleware)
+	protectedRoutes.Use(middleware.AuthMiddleware)
 	http.Handle("/", router)
 	fmt.Println("Server is listening...")
 	http.ListenAndServe(":8181", nil)
