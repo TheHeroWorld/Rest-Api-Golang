@@ -33,7 +33,7 @@ func Registration(email *string, name *string, password *string) error {
 		panic(err)
 	}
 	defer db.Close()
-	_, err = db.Exec("INSERT INTO users(email, password, name) values($1, $2, $3)", email, hesh, name)
+	_, err = db.Exec("INSERT INTO users(email, password, name) values($1, $2, $3)", email, hesh, name) // Запрос к БД
 	if err != nil {
 		return err
 	}
@@ -48,13 +48,13 @@ func FindUser(email string, pass string) (int, error) {
 		panic(err)
 	}
 	defer db.Close()
-	rows := db.QueryRow("SELECT password,id FROM users WHERE email = $1", email)
+	rows := db.QueryRow("SELECT password,id FROM users WHERE email = $1", email) // Запрос к БД
 	err = rows.Scan(&storedpassword, &id)
 	if err != nil {
 		return 0, ErrUserNotFound
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(storedpassword), []byte(pass)) // Сравниваем
+	err = bcrypt.CompareHashAndPassword([]byte(storedpassword), []byte(pass)) // Сравниваем хэши паролей
 	if err != nil {
 		return 0, ErrInvalidPassword
 	}
@@ -62,7 +62,7 @@ func FindUser(email string, pass string) (int, error) {
 
 }
 
-func NewTask(id any, name string, Description string) (string, error) {
+func NewTask(id any, name string, Description string) ([]data_task, error) {
 	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
 	time_at := time.Now()
 	deadline := time_at.Add(6 * time.Hour)
@@ -70,11 +70,19 @@ func NewTask(id any, name string, Description string) (string, error) {
 		panic(err)
 	}
 	defer db.Close()
-	_, err = db.Exec("INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at, deadline)
+	_, err = db.Exec("INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at, deadline) // Запрос к БД
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return "", nil
+	rows := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1 ORDER BY tasks DESC LIMIT 1", id) // Запрос к БД
+	var p data_task
+	err = rows.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
+	if err != nil {
+		return nil, err
+	}
+	var tasks []data_task
+	tasks = append(tasks, p)
+	return tasks, nil
 }
 
 func GetAllTasks(id any) ([]data_task, error) {
@@ -83,7 +91,7 @@ func GetAllTasks(id any) ([]data_task, error) {
 		panic(err)
 	}
 	defer db.Close()
-	rows, err := db.Query("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1", id)
+	rows, err := db.Query("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1", id) // Запрос к БД
 	if err != nil {
 		return []data_task{}, err
 	}
@@ -105,7 +113,7 @@ func GetTask(id any) ([]data_task, error) {
 		panic(err)
 	}
 	defer db.Close()
-	row := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1", id)
+	row := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1", id) // Запрос к БД
 	var p data_task
 	err = row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
@@ -130,16 +138,23 @@ func DeleteTask(id any) (string, error) {
 	return "", nil
 }
 
-func ChangeTusk(id any, status string) (string, error) {
+func ChangeTusk(id any, status string) ([]data_task, error) {
 	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
-	result, err := db.Exec("UPDATE tasks SET status = $1 where id = $2", status, id)
+	_, err = db.Exec("UPDATE tasks SET status = $1 where id = $2", status, id) // Запрос к БД
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	fmt.Println(result.RowsAffected())
-	return "", nil
+	row := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1", id) // Запрос к БД
+	var p data_task
+	err = row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
+	if err != nil {
+		return nil, err
+	}
+	var tasks []data_task
+	tasks = append(tasks, p)
+	return tasks, nil
 }

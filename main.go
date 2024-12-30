@@ -4,7 +4,6 @@ import (
 	"My_Frist_Golang/auth"
 	"My_Frist_Golang/db"
 	"My_Frist_Golang/middleware"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,8 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
-
-const connStr = "user=postgres password=7458 dbname=test_db sslmode=disable"
 
 type User struct {
 	Email    string `json:"Email"`
@@ -68,7 +65,8 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		fmt.Println(result) // НАдо понять как возвращать Idсозданной заявки
+		json_data, _ := json.Marshal(result)
+		w.Write(json_data)
 
 	} else {
 		data, _ := db.GetAllTasks(id)
@@ -85,16 +83,19 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		data := &task{}
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
-		_, err := db.ChangeTusk(vars["id"], data.Status)
+		result, err := db.ChangeTusk(vars["id"], data.Status)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
+		json_data, _ := json.Marshal(result)
+		w.Write(json_data)
+
 	} else if r.Method == "DELETE" {
 		_, err := db.DeleteTask(vars["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-	} else {
+	} else { // GET
 		data, err := db.GetTask(vars["id"])
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -105,11 +106,6 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close() // отключаемся
 	router := mux.NewRouter()
 	router.HandleFunc("/register", registerHandler).Methods("POST")
 	router.HandleFunc("/login", LoginHandler).Methods("POST")
