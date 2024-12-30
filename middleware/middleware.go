@@ -33,6 +33,9 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		if claims, ok := token.Claims.(jwt.MapClaims); ok { // Достаем из JWT все данные и если все ОК идем дальше
 			email := claims["email"]
 			id := claims["id"]
+			exp := claims["exp"]
+			fmt.Println(exp)
+
 			ctx := context.WithValue(r.Context(), "email", email) // Суем в контекст r  данные пользавотеля
 			ctx = context.WithValue(ctx, "id", id)
 			r = r.WithContext(ctx)
