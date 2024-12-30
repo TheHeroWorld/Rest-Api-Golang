@@ -16,6 +16,10 @@ const connStr = "user=postgres password=7458 dbname=test_db sslmode=disable"
 var ErrInvalidPassword = errors.New("invalid password")
 var ErrUserNotFound = errors.New("user not found")
 
+type response struct {
+	Tasks []data_task `json:"Tasks"`
+}
+
 type data_task struct {
 	ID          int    `json:"id"`
 	Status      string `json:"status"`
@@ -85,7 +89,7 @@ func NewTask(id any, name string, Description string) ([]data_task, error) {
 	return tasks, nil
 }
 
-func GetAllTasks(id any) ([]data_task, error) {
+func GetAllTasks(id any) (response, error) {
 	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
 	if err != nil {
 		panic(err)
@@ -93,7 +97,7 @@ func GetAllTasks(id any) ([]data_task, error) {
 	defer db.Close()
 	rows, err := db.Query("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1", id) // Запрос к БД
 	if err != nil {
-		return []data_task{}, err
+		return response{}, err
 	}
 	var tasks []data_task
 	for rows.Next() {
@@ -104,7 +108,8 @@ func GetAllTasks(id any) ([]data_task, error) {
 		}
 		tasks = append(tasks, p)
 	}
-	return tasks, nil
+	data := response{Tasks: tasks}
+	return data, nil
 }
 
 func GetTask(id any) ([]data_task, error) {
