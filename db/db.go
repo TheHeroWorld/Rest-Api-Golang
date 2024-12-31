@@ -124,7 +124,7 @@ func GetTask(id any) ([]data_task, error) {
 	if err != nil {
 		return nil, err
 	}
-	var tasks []data_task
+	tasks := make([]data_task, 0, 5)
 	tasks = append(tasks, p)
 	return tasks, nil
 }
