@@ -99,7 +99,7 @@ func GetAllTasks(id any) (response, error) {
 	if err != nil {
 		return response{}, err
 	}
-	var tasks []data_task
+	tasks := make([]data_task, 0, 2) // Пустой слайст с обьемом 2, что бы лишний раз не увеличивать слайс если 2 заявки
 	for rows.Next() {
 		var p data_task
 		err := rows.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
