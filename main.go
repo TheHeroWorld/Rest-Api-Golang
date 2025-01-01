@@ -78,12 +78,15 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user_id := ctx.Value("id")
 	vars := mux.Vars(r)
+
 	if r.Method == "PUT" {
 		data := &task{}
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
-		result, err := db.ChangeTusk(vars["id"], data.Status)
+		result, err := db.ChangeTusk(vars["id"], data.Status, user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -91,12 +94,12 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(json_data)
 
 	} else if r.Method == "DELETE" {
-		_, err := db.DeleteTask(vars["id"])
+		_, err := db.DeleteTask(vars["id"], user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	} else { // GET
-		data, err := db.GetTask(vars["id"])
+		data, err := db.GetTask(vars["id"], user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
