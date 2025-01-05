@@ -1,16 +1,16 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"errors"
+	"os"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
-
-const connStr = "user=postgres password=7458 dbname=test_db sslmode=disable"
 
 var ErrInvalidPassword = errors.New("invalid password")
 var ErrUserNotFound = errors.New("user not found")
@@ -21,38 +21,61 @@ type response struct {
 }
 
 type data_task struct {
-	ID          int    `json:"id"`
-	Status      string `json:"status"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	CreatedAt   string `json:"created_at"`
-	Deadline_at string `json:"deadline_at"`
+	ID          int       `json:"id"`
+	Status      string    `json:"status"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	Deadline_at time.Time `json:"deadline_at"`
 }
 
-func Registration(email *string, name *string, password *string) error {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
-	test := []byte(*password)
-	hesh, _ := bcrypt.GenerateFromPassword(test, bcrypt.DefaultCost) // Создаем хэш
+var db *pgxpool.Pool
+var err error
+
+func Init_DB() error {
+	err := godotenv.Load()
 	if err != nil {
-		panic(err)
+		return err
 	}
-	defer db.Close()
-	_, err = db.Exec("INSERT INTO users(email, password, name) values($1, $2, $3)", email, hesh, name) // Запрос к БД
+	CONNSTR := os.Getenv("CONNSTR")
+	db, err = pgxpool.New(context.Background(), CONNSTR) // Открытие пула подключений
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+func CloseDB() {
+	if db != nil {
+		db.Close() // Закрытие пула подключений
+	}
+}
+
+func Registration(email *string, name *string, password *string) error {
+	hesh, err := PasswordHesh(password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(context.Background(), "INSERT INTO users(email, password, name) values($1, $2, $3)", email, hesh, name) // Запрос к БД
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func PasswordHesh(password *string) ([]byte, error) {
+	h := []byte(*password)
+	hesh, err := bcrypt.GenerateFromPassword(h, bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	return hesh, nil
+}
+
 func FindUser(email string, pass string) (int, error) {
 	var storedpassword string
 	var id int
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	rows := db.QueryRow("SELECT password,id FROM users WHERE email = $1", email) // Запрос к БД
+	rows := db.QueryRow(context.Background(), "SELECT password,id FROM users WHERE email = $1", email) // Запрос к БД
 	err = rows.Scan(&storedpassword, &id)
 	if err != nil {
 		return 0, ErrUserNotFound
@@ -67,18 +90,13 @@ func FindUser(email string, pass string) (int, error) {
 }
 
 func NewTask(id any, name string, Description string) ([]data_task, error) {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
 	time_at := time.Now()
 	deadline := time_at.Add(6 * time.Hour)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	_, err = db.Exec("INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at, deadline) // Запрос к БД
+	_, err = db.Exec(context.Background(), "INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at.Format("2006-01-02 15:04:05"), deadline.Format("2006-01-02 15:04:05")) // Запрос к БД
 	if err != nil {
 		return nil, err
 	}
-	rows := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1 ORDER BY tasks DESC LIMIT 1", id) // Запрос к БД
+	rows := db.QueryRow(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1 ORDER BY tasks DESC LIMIT 1", id) // Запрос к БД
 	var p data_task
 	err = rows.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
@@ -90,12 +108,7 @@ func NewTask(id any, name string, Description string) ([]data_task, error) {
 }
 
 func GetAllTasks(id any) (response, error) {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	rows, err := db.Query("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1", id) // Запрос к БД
+	rows, err := db.Query(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1", id) // Запрос к БД
 	if err != nil {
 		return response{}, err
 	}
@@ -112,12 +125,7 @@ func GetAllTasks(id any) (response, error) {
 	return data, nil
 }
 func GetTask(id string, user_id float64) ([]data_task, error) {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	row := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1 AND user_id= $2", id, user_id) // Запрос к БД
+	row := db.QueryRow(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1 AND user_id= $2", id, user_id) // Запрос к БД
 	var p data_task
 	err = row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
@@ -130,21 +138,13 @@ func GetTask(id string, user_id float64) ([]data_task, error) {
 }
 
 // Надо сделать так что бы удалять данные администратор
-func DeleteTask(id string, user_id float64) (string, error) {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
+func DeleteTask(id string, user_id float64) (string, error) { //Подклчается к БД и проверяем ее
 	user_id_int := int(user_id)
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	result, err := db.Exec("DELETE FROM tasks WHERE tasks.id = $1 AND tasks.user_id= $2", id, user_id_int)
+	result, err := db.Exec(context.Background(), "DELETE FROM tasks WHERE tasks.id = $1 AND tasks.user_id= $2", id, user_id_int)
 	if err != nil {
 		return "", err
 	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return "", err
-	}
+	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
 		return "", ErrNoRows
 	}
@@ -152,17 +152,12 @@ func DeleteTask(id string, user_id float64) (string, error) {
 }
 
 // Надо сделать так что бы менять данные администратор
-func ChangeTusk(id string, status string, user_id float64) ([]data_task, error) {
-	db, err := sql.Open("postgres", connStr) //Подклчается к БД и проверяем ее
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
-	_, err = db.Exec("UPDATE tasks SET status = $1 WHERE id = $2 AND user_id= $3", status, id, user_id) // Запрос к БД
+func ChangeTask(id string, status string, user_id float64) ([]data_task, error) {
+	_, err = db.Exec(context.Background(), "UPDATE tasks SET status = $1 WHERE id = $2 AND user_id= $3", status, id, user_id) // Запрос к БД
 	if err != nil {
 		return nil, err
 	}
-	row := db.QueryRow("SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1", id) // Запрос к БД
+	row := db.QueryRow(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1", id) // Запрос к БД
 	var p data_task
 	err = row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {

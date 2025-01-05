@@ -3,9 +3,12 @@ package auth
 import (
 	"My_Frist_Golang/db"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -15,7 +18,12 @@ var (
 )
 
 func Auth(email string, password string) (string, error) {
-	key := []byte(`K0IxiQZOBwHGejUGCTwEz7J9EKi6l1evwEdET/Zy6mg=`)
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	JWTkey := os.Getenv("KEY")
+	key := []byte(JWTkey)
 	exp := jwt.NewNumericDate(time.Now().Add(6 * time.Hour))
 	id, err := db.FindUser(email, password) // Ищем юзера в базе данных
 	if err != nil || id == 0 {

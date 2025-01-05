@@ -3,15 +3,24 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 )
 
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := []byte(`K0IxiQZOBwHGejUGCTwEz7J9EKi6l1evwEdET/Zy6mg=`) // это надо убрать в .env
-		tokenHeader := r.Header["Authorization"]                      // ищем хедер Authorization
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
+		JWTkey := os.Getenv("KEY")
+		fmt.Println(JWTkey)
+		key := []byte(JWTkey)                    // это надо убрать в .env
+		tokenHeader := r.Header["Authorization"] // ищем хедер Authorization
 		if len(tokenHeader) == 0 {
 			http.Error(w, "Authorization header is missing", http.StatusUnauthorized)
 			return
