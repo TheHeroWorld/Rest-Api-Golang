@@ -18,7 +18,6 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			log.Fatal("Error loading .env file")
 		}
 		JWTkey := os.Getenv("KEY")
-		fmt.Println(JWTkey)
 		key := []byte(JWTkey)                    // это надо убрать в .env
 		tokenHeader := r.Header["Authorization"] // ищем хедер Authorization
 		if len(tokenHeader) == 0 {

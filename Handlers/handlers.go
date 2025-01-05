@@ -11,18 +11,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type User struct {
-	Email    string `json:"Email"`
-	Name     string `json:"Name"`
-	Password string `json:"Password"`
-}
-
-type task struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-}
-
 func Init_Handlers() {
 	router := mux.NewRouter()
 	router.HandleFunc("/register", registerHandler).Methods("POST")
@@ -40,24 +28,32 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	data := &User{}
 	decoder := json.NewDecoder(r.Body)
 	decoder.Decode(data)
-	if data.Email == "" || data.Name == "" || data.Password == "" {
-		http.Error(w, "Missing fields: email, name or password", http.StatusBadRequest)
-	} else {
-		err := db.Registration(&data.Email, &data.Name, &data.Password)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
-		}
-		w.WriteHeader(http.StatusOK)
+	err := Validation(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
+		return
 	}
+	err = db.Registration(&data.Email, &data.Name, &data.Password)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	data := &User{}
+	data := &AuthUser{}
 	decoder := json.NewDecoder(r.Body)
 	decoder.Decode(data)
+	err := Validation(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
+		return
+	}
 	token, err := auth.Auth(data.Email, data.Password)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusUnauthorized)
+		return
 	}
 	w.Header().Set("Authorization", "Bearer "+token)
 
@@ -66,10 +62,16 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 func TaskHandler(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	var id = ctx.Value("id")
-	if r.Method == "POST" {
+	// Переделал под SWITCH, что бы было понятнее какие методы где используются
+	switch r.Method {
+	case "POST":
 		data := &task{}
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
+		err := Validation(data)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
+		}
 		if data.Name == "" || data.Description == "" {
 			http.Error(w, "Missing fields: email, name or password", http.StatusBadRequest)
 		}
@@ -80,7 +82,7 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 		json_data, _ := json.Marshal(result)
 		w.Write(json_data)
 
-	} else {
+	case "DELETE":
 		data, _ := db.GetAllTasks(id)
 		w.Header().Set("Content-Type", "application/json")
 		json_data, _ := json.Marshal(data)
@@ -93,11 +95,16 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user_id := ctx.Value("id")
 	vars := mux.Vars(r)
-
-	if r.Method == "PUT" {
+	// Переделал под SWITCH, что бы было понятнее какие методы где используются
+	switch r.Method {
+	case "POST":
 		data := &task{}
 		decoder := json.NewDecoder(r.Body)
 		decoder.Decode(data)
+		err := Validation(data)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
+		}
 		result, err := db.ChangeTask(vars["id"], data.Status, user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -105,12 +112,12 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		json_data, _ := json.Marshal(result)
 		w.Write(json_data)
 
-	} else if r.Method == "DELETE" {
+	case "DELETE":
 		_, err := db.DeleteTask(vars["id"], user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-	} else { // GET
+	case "GET":
 		data, err := db.GetTask(vars["id"], user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

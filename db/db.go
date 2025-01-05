@@ -3,13 +3,9 @@ package db
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
 )
 
 var ErrInvalidPassword = errors.New("invalid password")
@@ -27,28 +23,6 @@ type data_task struct {
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	Deadline_at time.Time `json:"deadline_at"`
-}
-
-var db *pgxpool.Pool
-var err error
-
-func Init_DB() error {
-	err := godotenv.Load()
-	if err != nil {
-		return err
-	}
-	CONNSTR := os.Getenv("CONNSTR")
-	db, err = pgxpool.New(context.Background(), CONNSTR) // Открытие пула подключений
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func CloseDB() {
-	if db != nil {
-		db.Close() // Закрытие пула подключений
-	}
 }
 
 func Registration(email *string, name *string, password *string) error {
@@ -76,7 +50,7 @@ func FindUser(email string, pass string) (int, error) {
 	var storedpassword string
 	var id int
 	rows := db.QueryRow(context.Background(), "SELECT password,id FROM users WHERE email = $1", email) // Запрос к БД
-	err = rows.Scan(&storedpassword, &id)
+	err := rows.Scan(&storedpassword, &id)
 	if err != nil {
 		return 0, ErrUserNotFound
 	}
@@ -92,7 +66,7 @@ func FindUser(email string, pass string) (int, error) {
 func NewTask(id any, name string, Description string) ([]data_task, error) {
 	time_at := time.Now()
 	deadline := time_at.Add(6 * time.Hour)
-	_, err = db.Exec(context.Background(), "INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at.Format("2006-01-02 15:04:05"), deadline.Format("2006-01-02 15:04:05")) // Запрос к БД
+	_, err := db.Exec(context.Background(), "INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at.Format("2006-01-02 15:04:05"), deadline.Format("2006-01-02 15:04:05")) // Запрос к БД
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +101,7 @@ func GetAllTasks(id any) (response, error) {
 func GetTask(id string, user_id float64) ([]data_task, error) {
 	row := db.QueryRow(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1 AND user_id= $2", id, user_id) // Запрос к БД
 	var p data_task
-	err = row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
+	err := row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +127,7 @@ func DeleteTask(id string, user_id float64) (string, error) { //Подклчае
 
 // Надо сделать так что бы менять данные администратор
 func ChangeTask(id string, status string, user_id float64) ([]data_task, error) {
-	_, err = db.Exec(context.Background(), "UPDATE tasks SET status = $1 WHERE id = $2 AND user_id= $3", status, id, user_id) // Запрос к БД
+	_, err := db.Exec(context.Background(), "UPDATE tasks SET status = $1 WHERE id = $2 AND user_id= $3", status, id, user_id) // Запрос к БД
 	if err != nil {
 		return nil, err
 	}
