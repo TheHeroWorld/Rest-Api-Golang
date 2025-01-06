@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"My_Frist_Golang/db"
 	"context"
 	"fmt"
 	"log"
@@ -41,6 +42,11 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		if claims, ok := token.Claims.(jwt.MapClaims); ok { // Достаем из JWT все данные и если все ОК идем дальше
 			email := claims["email"]
 			id := claims["id"]
+			err := db.Findid(id)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
+				return
+			}
 			ctx := context.WithValue(r.Context(), "email", email) // Суем в контекст r  данные пользавотеля
 			ctx = context.WithValue(ctx, "id", id)
 			r = r.WithContext(ctx)

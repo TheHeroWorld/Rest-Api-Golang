@@ -62,19 +62,16 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 func TaskHandler(w http.ResponseWriter, r *http.Request) {
 	var ctx = r.Context()
 	var id = ctx.Value("id")
+	data := &task{}
+	decoder := json.NewDecoder(r.Body)
+	decoder.Decode(data)
+	err := Validation(data)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
+	}
 	// Переделал под SWITCH, что бы было понятнее какие методы где используются
 	switch r.Method {
 	case "POST":
-		data := &task{}
-		decoder := json.NewDecoder(r.Body)
-		decoder.Decode(data)
-		err := Validation(data)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
-		}
-		if data.Name == "" || data.Description == "" {
-			http.Error(w, "Missing fields: email, name or password", http.StatusBadRequest)
-		}
 		result, err := db.NewTask(id, data.Name, data.Description)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -82,8 +79,10 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 		json_data, _ := json.Marshal(result)
 		w.Write(json_data)
 
-	case "DELETE":
-		data, _ := db.GetAllTasks(id)
+	case "GET":
+		taskID := r.URL.Query().Get("Task_id") // Получаем Task_id как строку
+		limit := r.URL.Query().Get("Limit")    // Получаем Limit как строку
+		data, _ := db.GetAllTasks(id, taskID, limit)
 		w.Header().Set("Content-Type", "application/json")
 		json_data, _ := json.Marshal(data)
 		w.Write(json_data)

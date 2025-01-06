@@ -46,6 +46,16 @@ func PasswordHesh(password *string) ([]byte, error) {
 	return hesh, nil
 }
 
+func Findid(id any) error {
+
+	rows := db.QueryRow(context.Background(), "SELECT id FROM users WHERE id = $1", id) // Запрос к БД
+	err := rows.Scan(&id)
+	if err != nil {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
 func FindUser(email string, pass string) (int, error) {
 	var storedpassword string
 	var id int
@@ -81,8 +91,14 @@ func NewTask(id any, name string, Description string) ([]data_task, error) {
 	return tasks, nil
 }
 
-func GetAllTasks(id any) (response, error) {
-	rows, err := db.Query(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1", id) // Запрос к БД
+func GetAllTasks(user_id any, task_id string, limit string) (response, error) {
+	if task_id == "" {
+		task_id = "1" // Если task_id не передан, начинаем с первого ID
+	}
+	if limit == "" {
+		limit = "10" // Если limit не передан, возвращаем 10 записей
+	}
+	rows, err := db.Query(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1 AND tasks.id >= $2 ORDER BY tasks.id asc LIMIT $3", user_id, task_id, limit) // КУРСОВАЯ ПАГИНАЦИЯ
 	if err != nil {
 		return response{}, err
 	}
