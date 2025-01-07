@@ -25,15 +25,8 @@ func Init_Handlers() {
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
-	data := &User{}
-	decoder := json.NewDecoder(r.Body)
-	decoder.Decode(data)
-	err := Validation(data)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
-		return
-	}
-	err = db.Registration(&data.Email, &data.Name, &data.Password)
+	data := DecodeData(&User{}, w, r).(*User) // Приводим data к типу *User
+	err := db.Registration(&data.Email, &data.Name, &data.Password)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
 		return
@@ -42,14 +35,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	data := &AuthUser{}
-	decoder := json.NewDecoder(r.Body)
-	decoder.Decode(data)
-	err := Validation(data)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
-		return
-	}
+	data := DecodeData(&AuthUser{}, w, r).(*AuthUser) // Приводим data к типу *AuthUser
 	token, err := auth.Auth(data.Email, data.Password)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusUnauthorized)
@@ -96,14 +82,8 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	// Переделал под SWITCH, что бы было понятнее какие методы где используются
 	switch r.Method {
-	case "POST":
-		data := &task{}
-		decoder := json.NewDecoder(r.Body)
-		decoder.Decode(data)
-		err := Validation(data)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
-		}
+	case "PUT":
+		data := DecodeData(&task{}, w, r).(*task) // Приводим data к типу *task
 		result, err := db.ChangeTask(vars["id"], data.Status, user_id.(float64))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

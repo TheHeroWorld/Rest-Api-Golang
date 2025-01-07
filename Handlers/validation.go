@@ -16,9 +16,9 @@ type AuthUser struct {
 }
 
 type task struct {
-	Name        string `json:"Name" validate:"required"`
-	Description string `json:"Description" validate:"required"`
-	Status      string `json:"Status" validate:"required"`
+	Name        string `json:"Name"`
+	Description string `json:"Description" `
+	Status      string `json:"Status" `
 }
 
 func Validation(d interface{}) error {

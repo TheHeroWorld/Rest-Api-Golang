@@ -96,13 +96,13 @@ func GetAllTasks(user_id any, task_id string, limit string) (response, error) {
 		task_id = "1" // Если task_id не передан, начинаем с первого ID
 	}
 	if limit == "" {
-		limit = "10" // Если limit не передан, возвращаем 10 записей
+		limit = "5" // Если limit не передан, возвращаем 10 записей
 	}
 	rows, err := db.Query(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE users.id = $1 AND tasks.id >= $2 ORDER BY tasks.id asc LIMIT $3", user_id, task_id, limit) // КУРСОВАЯ ПАГИНАЦИЯ
 	if err != nil {
 		return response{}, err
 	}
-	tasks := make([]data_task, 0, 2) // Пустой слайст с обьемом 2, что бы лишний раз не увеличивать слайс если 2 заявки
+	tasks := make([]data_task, 0, 5) // Слайс теперь 5, так как по стандарту лимит 5
 	for rows.Next() {
 		var p data_task
 		err := rows.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
@@ -114,6 +114,7 @@ func GetAllTasks(user_id any, task_id string, limit string) (response, error) {
 	data := response{Tasks: tasks}
 	return data, nil
 }
+
 func GetTask(id string, user_id float64) ([]data_task, error) {
 	row := db.QueryRow(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks,users WHERE tasks.id = $1 AND user_id= $2", id, user_id) // Запрос к БД
 	var p data_task
