@@ -1,6 +1,9 @@
 package handlers
 
-import "github.com/go-playground/validator/v10"
+import (
+	"github.com/go-playground/validator/v10"
+	"github.com/sirupsen/logrus"
+)
 
 var validate *validator.Validate
 
@@ -25,7 +28,11 @@ func Validation(d interface{}) error {
 	validate = validator.New(validator.WithRequiredStructEnabled())
 	err := validate.Struct(d)
 	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Warn("Validation failed")
 		return err
 	}
+	log.Info("Validation succeeded")
 	return nil
 }
