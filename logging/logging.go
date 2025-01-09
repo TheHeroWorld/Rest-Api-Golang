@@ -9,9 +9,10 @@ import (
 var log = logrus.New()
 
 func InitLog() {
+	InitHook()
 	log.SetReportCaller(true)
 	log.SetFormatter(&logrus.TextFormatter{
-		DisableColors: true,
+		DisableColors: false,
 		FullTimestamp: true,
 	})
 	file, err := os.OpenFile("logs/logrus.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
