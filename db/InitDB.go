@@ -14,7 +14,7 @@ var db *pgxpool.Pool // переменная пула
 func InitDB() error {
 	err := godotenv.Load()
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"error": err.Error(),
 		}).Fatal("Error loading .env file")
 		return err
@@ -23,12 +23,12 @@ func InitDB() error {
 	db, err = pgxpool.New(context.Background(), CONNSTR)
 	// Открытие пула подключений
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"error": err.Error(),
 		}).Fatal("Error init database connection pool")
 		return err
 	}
-	log.Info("Database connection pool init successfully")
+	log.Info("Database connection pool init successfully") // логи
 	return nil
 }
 

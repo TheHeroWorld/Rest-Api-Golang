@@ -5,6 +5,7 @@ import (
 	"My_Frist_Golang/db"
 	"My_Frist_Golang/logging"
 	"My_Frist_Golang/middleware"
+	"My_Frist_Golang/monitoring"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -16,13 +17,15 @@ import (
 var log = logging.GetLogger() // логгер
 
 func InitHandlers() {
+	go monitoring.Monitor()
 	router := mux.NewRouter()
 	router.HandleFunc("/register", registerHandler).Methods("POST")
 	router.HandleFunc("/login", LoginHandler).Methods("POST")
 	protectedRoutes := router.PathPrefix("/tasks").Subrouter() // создаем саб роутер для авторизации
 	protectedRoutes.HandleFunc("", TaskHandler).Methods("POST", "GET")
 	protectedRoutes.HandleFunc("/{id:[0-9]+}", ChangeTaskHandler).Methods("PUT", "DELETE", "GET")
-	protectedRoutes.Use(middleware.AuthMiddleware) // под саб роутер подвязываем мидлвейр авторизации
+	protectedRoutes.Use(middleware.AuthMiddleware)
+	router.Use(middleware.MonitorMiddleware) // под саб роутер подвязываем мидлвейр авторизации
 	http.Handle("/", router)
 	fmt.Println("Server is listening...")
 	log.Info("Server is listening on port 8181")
@@ -31,20 +34,20 @@ func InitHandlers() {
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	data := DecodeData(&User{}, w, r).(*User) // Приводим data к типу *User
-	log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{             // логи
 		"email": data.Email,
 		"name":  data.Name,
 	}).Info("Registration request received")
 	err := db.Registration(&data.Email, &data.Name, &data.Password)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"email": data.Email,
 			"error": err.Error(),
 		}).Error("Registration failed")
 		http.Error(w, fmt.Sprintf("Error %s", err), http.StatusBadRequest)
 		return
 	}
-	log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{ // логи
 		"email": data.Email,
 	}).Info("Registration successful")
 	w.WriteHeader(http.StatusOK)
@@ -52,7 +55,7 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	data := DecodeData(&AuthUser{}, w, r).(*AuthUser) // Приводим data к типу *AuthUser
-	log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{                     // логи
 		"email": data.Email,
 	}).Info("Login request received")
 	token, err := auth.Auth(data.Email, data.Password)
@@ -85,13 +88,13 @@ func TaskHandler(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		result, err := db.NewTask(id, data.Name, data.Description)
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"data":  data,
 				"error": err.Error(),
 			}).Error("Creating task failed")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"task": data.Name,
 		}).Info("Task created successfully")
 		json_data, _ := json.Marshal(result)
@@ -115,14 +118,14 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "PUT":
 		data := DecodeData(&task{}, w, r).(*task) // Приводим data к типу *task
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{             // логи
 			"task_id": vars["id"],
 			"status":  data.Status,
 			"user_id": user_id,
 		}).Info("Update task request received")
 		result, err := db.ChangeTask(vars["id"], data.Status, user_id.(float64))
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"task_id": vars["id"],
 				"error":   err.Error(),
 			}).Error("Task update failed")
@@ -135,13 +138,13 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(json_data)
 
 	case "DELETE":
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"task_id": vars["id"],
 			"user_id": user_id,
 		}).Info("Delete task request received")
 		_, err := db.DeleteTask(vars["id"], user_id.(float64))
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"task_id": vars["id"],
 				"error":   err.Error(),
 			}).Error("Task deletion failed")
@@ -151,19 +154,19 @@ func ChangeTaskHandler(w http.ResponseWriter, r *http.Request) {
 			"task_id": vars["id"],
 		}).Info("Task deleted successfully")
 	case "GET":
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"task_id": vars["id"],
 			"user_id": user_id,
 		}).Info("Get task request received")
 		data, err := db.GetTask(vars["id"], user_id.(float64))
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"task_id": vars["id"],
 				"error":   err.Error(),
 			}).Error("Getting task failed")
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"task_id": vars["id"],
 		}).Info("Task retrieved successfully")
 		json_data, _ := json.Marshal(data)

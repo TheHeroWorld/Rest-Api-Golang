@@ -9,9 +9,12 @@ import (
 var log = logrus.New()
 
 func InitLog() {
+	//Запускаем ХУК
 	InitHook()
+	//Ниже настройки логгера
 	log.SetReportCaller(true)
 	log.SetFormatter(&logrus.TextFormatter{
+		// Не работают цветной вывод, почему не знаю
 		DisableColors: false,
 		FullTimestamp: true,
 	})
@@ -23,6 +26,7 @@ func InitLog() {
 	}
 }
 
+// Функция для вызова логгера в других пакетах
 func GetLogger() *logrus.Logger {
 	return log
 }

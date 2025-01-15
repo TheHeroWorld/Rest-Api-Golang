@@ -25,7 +25,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		key := []byte(JWTkey)                    // это надо убрать в .env
 		tokenHeader := r.Header["Authorization"] // ищем хедер Authorization
 		if len(tokenHeader) == 0 {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"request_method": r.Method,
 				"request_url":    r.URL.String(),
 			}).Info("Authorization header is missing")
@@ -37,7 +37,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) { // Проверяем метод подписания
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				err := fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-				log.WithFields(logrus.Fields{
+				log.WithFields(logrus.Fields{ // логи
 					"method": token.Header["alg"],
 				}).Error("Unexpected signing method")
 				return nil, err
@@ -45,7 +45,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return key, nil
 		})
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"error": err.Error(),
 			}).Error("Failed to parse token")
 			http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -57,7 +57,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			id := claims["id"]
 			err := db.Findid(id)
 			if err != nil {
-				log.WithFields(logrus.Fields{
+				log.WithFields(logrus.Fields{ // логи
 					"user_id": id,
 					"email":   email,
 					"error":   err.Error(),

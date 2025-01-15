@@ -56,12 +56,12 @@ func PasswordHesh(password *string) ([]byte, error) {
 	h := []byte(*password)
 	hesh, err := bcrypt.GenerateFromPassword(h, bcrypt.DefaultCost)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"error": err.Error(),
 		}).Error("Password hashing failed")
 		return nil, err
 	}
-	log.Info("Password hashed successfully")
+	log.Info("Password hashed successfully") // логи
 	return hesh, nil
 }
 
@@ -69,13 +69,13 @@ func Findid(id any) error {
 	rows := db.QueryRow(context.Background(), "SELECT id FROM users WHERE id = $1", id) // Запрос к БД
 	err := rows.Scan(&id)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"id":    id,
 			"error": err.Error(),
 		}).Error("User not found")
 		return ErrUserNotFound
 	}
-	log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{ // логи
 		"id": id,
 	}).Info("User found")
 	return nil
@@ -87,7 +87,7 @@ func FindUser(email string, pass string) (int, error) {
 	rows := db.QueryRow(context.Background(), "SELECT password,id FROM users WHERE email = $1", email) // Запрос к БД
 	err := rows.Scan(&storedpassword, &id)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"email": email,
 			"error": err.Error(),
 		}).Error("User not found")
@@ -96,7 +96,7 @@ func FindUser(email string, pass string) (int, error) {
 
 	err = bcrypt.CompareHashAndPassword([]byte(storedpassword), []byte(pass)) // Сравниваем хэши паролей
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"email": email,
 			"error": err.Error(),
 		}).Error("Invalid password")
@@ -114,7 +114,7 @@ func NewTask(id any, name string, Description string) ([]data_task, error) {
 	deadline := time_at.Add(6 * time.Hour)
 	_, err := db.Exec(context.Background(), "INSERT INTO tasks(user_id, name, description,created_at, deadline_at) values($1, $2, $3, $4, $5)", id, name, Description, time_at.Format("2006-01-02 15:04:05"), deadline.Format("2006-01-02 15:04:05")) // Запрос к БД
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"user_id": id,
 			"error":   err.Error(),
 		}).Error("Error inserting new task into database")
@@ -128,7 +128,7 @@ func NewTask(id any, name string, Description string) ([]data_task, error) {
 	var p data_task
 	err = rows.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"user_id": id,
 			"error":   err.Error(),
 		}).Error("Error retrieving task after creation")
@@ -149,7 +149,7 @@ func GetAllTasks(user_id any, task_id string, limit string) (response, error) {
 	}
 	rows, err := db.Query(context.Background(), "SELECT tasks.id, status, tasks.name, description, created_at,deadline_at FROM tasks WHERE user_id = $1 AND tasks.id >= $2 ORDER BY tasks.id asc LIMIT $3", user_id, task_id, limit) // КУРСОВАЯ ПАГИНАЦИЯ
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"user_id": user_id,
 			"error":   err.Error(),
 		}).Error("Error retrieving tasks")
@@ -163,7 +163,7 @@ func GetAllTasks(user_id any, task_id string, limit string) (response, error) {
 		var p data_task
 		err := rows.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 		if err != nil {
-			log.WithFields(logrus.Fields{
+			log.WithFields(logrus.Fields{ // логи
 				"error": err.Error(),
 			}).Error("Error scanning task")
 			continue
@@ -182,7 +182,7 @@ func GetTask(id string, user_id float64) ([]data_task, error) {
 	var p data_task
 	err := row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"id":      id,
 			"user_id": user_id,
 			"error":   err.Error(),
@@ -202,7 +202,7 @@ func DeleteTask(id string, user_id float64) (string, error) { //Подклчае
 	user_id_int := int(user_id)
 	result, err := db.Exec(context.Background(), "DELETE FROM tasks WHERE tasks.id = $1 AND tasks.user_id= $2", id, user_id_int)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"id":      id,
 			"user_id": user_id,
 			"error":   err.Error(),
@@ -211,13 +211,13 @@ func DeleteTask(id string, user_id float64) (string, error) { //Подклчае
 	}
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"id":      id,
 			"user_id": user_id,
 		}).Warn("No rows affected while deleting task")
 		return "", ErrNoRows
 	}
-	log.WithFields(logrus.Fields{
+	log.WithFields(logrus.Fields{ // логи
 		"id":      id,
 		"user_id": user_id,
 	}).Info("Task deleted successfully")
@@ -227,7 +227,7 @@ func DeleteTask(id string, user_id float64) (string, error) { //Подклчае
 func ChangeTask(id string, status string, user_id float64) ([]data_task, error) {
 	_, err := db.Exec(context.Background(), "UPDATE tasks SET status = $1 WHERE id = $2 AND user_id= $3", status, id, user_id) // Запрос к БД
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"id":      id,
 			"user_id": user_id,
 			"error":   err.Error(),
@@ -243,7 +243,7 @@ func ChangeTask(id string, status string, user_id float64) ([]data_task, error) 
 	var p data_task
 	err = row.Scan(&p.ID, &p.Status, &p.Name, &p.Description, &p.CreatedAt, &p.Deadline_at)
 	if err != nil {
-		log.WithFields(logrus.Fields{
+		log.WithFields(logrus.Fields{ // логи
 			"id":      id,
 			"user_id": user_id,
 			"error":   err.Error(),
